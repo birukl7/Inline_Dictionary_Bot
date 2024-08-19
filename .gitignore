@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables and secrets
+.env
+
+# Python egg files
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+
+# Test coverage and logs
+coverage/
+*.cover
+*.log
+*.sql
+*.sqlite3
+
+# Cache files
+*.cache
+*.mo
+*.pot
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+*~
+
+# Dependency directory
+*.egg-info/
+.Python
+pip-log.txt
+
+# macOS specific files
+.DS_Store
+
+# Pytest specific
+.pytest_cache/
