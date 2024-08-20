@@ -11,7 +11,6 @@ from collections import defaultdict
 # Load environment variables from .env
 load_dotenv()
 
-
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -35,6 +34,10 @@ spell = SpellChecker()
 # Function to handle /start command
 async def start(update: Update, context):
     await update.message.reply_text('Hello! I can provide word definitions. Send me a word to get started!')
+
+# Function to handle /help command
+async def help(update: Update, context):
+    await update.message.reply_text('Contact @birukl_777 for any inqueries.')
 
 # Function to fetch word definitions and pronunciation from the Free Dictionary API
 async def fetch_definition(word):
@@ -200,6 +203,7 @@ if __name__ == '__main__':
 
     # Add command handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help",help))
 
     # Add message handler for direct messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
