@@ -134,7 +134,7 @@ async def handle_message(update: Update, context):
         return
     
     # Spell check the message text
-    corrected_query = spell.correction(message_text) if len(message_text) > 3 else message_text
+    corrected_query = spell.correction(message_text) if len(message_text) > 2 else message_text
 
     # Fetch the definitions and pronunciation for the corrected query
     definitions = await fetch_definition(corrected_query)
