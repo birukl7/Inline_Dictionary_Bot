@@ -11,6 +11,7 @@ from collections import defaultdict
 # Load environment variables from .env
 load_dotenv()
 
+
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
