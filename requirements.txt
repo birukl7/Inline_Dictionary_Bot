@@ -5,4 +5,4 @@ pytest==7.4.2
 pylint==2.17.5
 coverage==7.3.1
 httpx==0.25.0
-spellchecker==0.6.2
+pyspellchecker==0.7.0
