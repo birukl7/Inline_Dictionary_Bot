@@ -7,3 +7,5 @@ coverage==7.3.1
 httpx==0.24.0
 pyspellchecker==0.7.0
 Flask==2.2.2
+Werkzeug==2.2.2
+

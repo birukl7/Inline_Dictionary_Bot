@@ -9,6 +9,8 @@ import asyncio
 from spellchecker import SpellChecker
 from collections import defaultdict
 import threading
+from urllib.parse import quote as url_quote
+
 
 
 # Load environment variables from .env
