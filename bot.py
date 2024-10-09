@@ -1,4 +1,5 @@
 import os
+from flask import Flask, jsonify
 from telegram import Update, InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, InlineQueryHandler, CallbackQueryHandler, MessageHandler, filters
 from dotenv import load_dotenv
@@ -7,6 +8,8 @@ import httpx
 import asyncio
 from spellchecker import SpellChecker
 from collections import defaultdict
+import threading
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -31,13 +34,16 @@ http_client = httpx.AsyncClient(timeout=1.5)
 # Initialize the spell checker
 spell = SpellChecker()
 
+# Flask app
+app = Flask(__name__)
+
 # Function to handle /start command
 async def start(update: Update, context):
     await update.message.reply_text('Hello! I can provide word definitions. Send me a word to get started!')
 
 # Function to handle /help command
 async def help(update: Update, context):
-    await update.message.reply_text('Contact @birukl_777 for any inqueries.')
+    await update.message.reply_text('Contact @birukl_777 for any inquiries.')
 
 # Function to fetch word definitions and pronunciation from the Free Dictionary API
 async def fetch_definition(word):
@@ -55,7 +61,7 @@ async def fetch_definition(word):
                 "definition": definition["definition"],
                 "part_of_speech": meaning.get("partOfSpeech", ""),
                 "example": definition.get("example", ""),
-                "audio": data[0]["phonetics"][0].get("audio", "")  # Fetch the pronunciation audio URL
+                "audio": data[0]["phonetics"][0].get("audio", "")
             }
             for meaning in data[0]["meanings"]
             for definition in meaning["definitions"]
@@ -80,10 +86,7 @@ async def inline_query(update: Update, context):
     if not query:
         return
 
-    # Spell check the input query
     corrected_query = spell.correction(query) if len(query) > 3 else query
-
-    # Fetch the definitions for the corrected query
     definitions = await fetch_definition(corrected_query)
 
     if not definitions:
@@ -112,7 +115,6 @@ async def inline_query(update: Update, context):
             for i, definition in enumerate(definitions)
         ]
 
-        # If the query was corrected, add a message about the correction
         if query != corrected_query:
             results.insert(
                 0,
@@ -135,33 +137,26 @@ async def handle_message(update: Update, context):
     if len(message_text.split()) > 1:
         await update.message.reply_text("Please enter a single word to get its definition.")
         return
-    
-    # Spell check the message text
-    corrected_query = spell.correction(message_text) if len(message_text) > 2 else message_text
 
-    # Fetch the definitions and pronunciation for the corrected query
+    corrected_query = spell.correction(message_text) if len(message_text) > 2 else message_text
     definitions = await fetch_definition(corrected_query)
 
     if not definitions:
         await update.message.reply_text("Sorry, no definitions were found for this word.")
     else:
-        # Create a message with all definitions
         message_parts = []
         for i, definition in enumerate(definitions):
-            # Create a button for pronunciation
             keyboard = []
             if definition["audio"]:
                 keyboard = [[InlineKeyboardButton("🔊 Pronunciation", callback_data=f"pronounce_{corrected_query}_{i}")]]
-            
-            # Format the part with bullet points for subsequent definitions
+
             if i == 0:
                 part = f"*{corrected_query.capitalize()}* (_{definition['part_of_speech']}_): \n{definition['definition']}"
             else:
                 part = f"• {definition['definition']}"
 
             message_parts.append(part)
-        
-        # Join all parts into a single message
+
         full_message = "\n".join(message_parts)
         await update.message.reply_text(
             full_message,
@@ -169,21 +164,18 @@ async def handle_message(update: Update, context):
             reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
         )
 
-
 # Function to handle pronunciation button click
 async def pronounce(update: Update, context):
     query = update.callback_query
     await query.answer()
 
-    # Extract word and definition index from callback data
     _, word, index = query.data.split('_')
-    index = int(index)  # Ensure index is an integer
+    index = int(index)
     definitions = await fetch_definition(word)
 
     if index < len(definitions):
         audio_url = definitions[index].get("audio", "")
         if audio_url:
-            # Send the audio directly to the user using their user ID
             await context.bot.send_audio(chat_id=query.from_user.id, audio=audio_url)
         else:
             await query.message.reply_text("Sorry, no pronunciation audio available.")
@@ -194,31 +186,32 @@ async def pronounce(update: Update, context):
 async def error(update: Update, context):
     logger.error(f"Update {update} caused error {context.error}")
 
-# Run the bot
-if __name__ == '__main__':
-    print("Starting bot...")
-    
-    # Create the application and pass in the bot token
+# Function to run the bot in a background thread
+def run_bot():
+
+      # Create a new event loop for this thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Add command handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help",help))
-
-    # Add message handler for direct messages
+    application.add_handler(CommandHandler("help", help))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    # Add inline query handler
     application.add_handler(InlineQueryHandler(inline_query))
-
-    # Add callback query handler for pronunciation
     application.add_handler(CallbackQueryHandler(pronounce, pattern=r'^pronounce_'))
-
-    # Errors
     application.add_error_handler(error)
 
-    print('Polling...')
     application.run_polling()
 
-    # Ensure http_client is closed properly on exit
-    asyncio.run(http_client.aclose())
+# Flask route for health check
+@app.route('/')
+def home():
+    return jsonify({"status": "bot is running"}), 200
+
+# Start Flask app and bot in separate threads
+if __name__ == '__main__':
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8000)))
